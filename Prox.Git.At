@@ -1,0 +1,37 @@
+
+
+import http.server
+import socketserver
+import requests
+from urllib.parse import urlparse, parse_qs
+
+class Proxy(http.server.SimpleHTTPRequestHandler):
+    def do_GET(self):
+        # Parse the incoming URL
+        url = self.path
+        parsed_url = urlparse(url)
+        
+        # Check if the request is for allowed sites
+        if parsed_url.netloc in ('discord.com', 'google.com', 'youtube.com','chatgpt.com'):
+            try:
+                # Forward the request to the actual site
+                response = requests.get(url)
+                
+                # Send the response back to the client
+                self.send_response(response.status_code)
+                for key, value in response.headers.items():
+                    self.send_header(key, value)
+                self.end_headers()
+                self.wfile.write(response.content)
+            except Exception as e:
+                self.send_error(500, str(e))
+        else:
+            self.send_error(403, "Forbidden: Access denied")
+
+def run(server_class=http.server.HTTPServer, handler_class=Proxy, port=8000):
+    server_address = ('', port)
+    httpd = server_class(server_address, handler_class)
+    print(f'Serving on port {port}')
+    httpd.serve_forever()
+
+if __name__ == "__main__":
